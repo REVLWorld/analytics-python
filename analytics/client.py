@@ -25,7 +25,7 @@ class Client(object):
     log = logging.getLogger('segment')
 
     def __init__(self, write_key=None, debug=False, max_queue_size=10000,
-                 send=True, on_error=None):
+                 send=True, on_error=None, exit_timeout=5):
         require('write_key', write_key, string_types)
 
         self.queue = queue.Queue(max_queue_size)
@@ -34,6 +34,7 @@ class Client(object):
         self.on_error = on_error
         self.debug = debug
         self.send = send
+        self.exit_timeout = exit_timeout
 
         if debug:
             self.log.setLevel(logging.DEBUG)
@@ -233,7 +234,8 @@ class Client(object):
         """Ends the consumer thread once the queue is empty. Blocks execution until finished"""
         self.consumer.pause()
         try:
-            self.consumer.join()
+            self.consumer.queue.put_nowait(queue.Empty)
+            self.consumer.join(self.exit_timeout)
         except RuntimeError:
             # consumer thread has not started
             pass
